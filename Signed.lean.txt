@@ -1,0 +1,480 @@
+/-
+Copyright: formalization accompanying "Algebraic Frequency Grids, Harmonic Resonances
+and Primality" (vf4).  Finite verification of vf4 §6.4.8, layer 1.
+
+# The signed form of the lattice
+
+With `aOf t = arcsin|s₂ t| / ln 2` and `Δ = 2π/ln 2` one has `b(t,k,σ) = σ aOf t − k Δ`, and the
+sign of `σk` selects the branch:
+
+  `σk > 0  →  |b| = |k|Δ − aOf t`   (decreasing in `t`),
+  `σk < 0  →  |b| = |k|Δ + aOf t`   (increasing in `t`).
+
+This is what lets a mode be moved to a neighbour with the same `(k,σ)` without leaving `|b| ≤ T`.
+-/
+import FrequencyGrids.Band
+import FrequencyGrids.Parametric
+
+set_option maxHeartbeats 4000000
+
+set_option maxRecDepth 10000
+
+namespace FrequencyGrids
+
+open Set
+
+/-- `aOf t = arcsin|s₂ t| / ln 2`. -/
+noncomputable def aOf (t : ℕ) : ℝ := Real.arcsin |s2 t| / Real.log 2
+
+theorem aOf_nonneg (t : ℕ) : 0 ≤ aOf t :=
+  div_nonneg (Real.arcsin_nonneg.mpr (abs_nonneg _)) log_two_pos.le
+
+theorem aOf_pos {t : ℕ} (h1 : 1 ≤ t) (h2 : t ≤ 589) : 0 < aOf t :=
+  div_pos (Real.arcsin_pos.mpr (s2_abs_pos t h1 h2)) log_two_pos
+
+/-- `aOf t ≤ Δ/4`, from `arcsin ≤ π/2`. -/
+theorem aOf_le_delta_div_four (t : ℕ) : aOf t ≤ Delta / 4 := by
+  have h := Real.arcsin_le_pi_div_two |s2 t|
+  have hL : (0:ℝ) < Real.log 2 := log_two_pos
+  unfold aOf
+  rw [Delta_div_four, show Real.pi / (2 * Real.log 2) = (Real.pi / 2) / Real.log 2 from by
+    field_simp]
+  exact (div_le_div_iff_of_pos_right hL).mpr h
+
+/-- The lattice identity `b = σ aOf t − k Δ`. -/
+theorem b_eq_signed (t : ℕ) (k : ℤ) {σ : ℝ} (hσ : σ ∈ sigmaSet) :
+    b t k σ = σ * aOf t - (k : ℝ) * Delta := by
+  rw [b_eq_affine, arcsin_sigma t hσ]
+  unfold aOf Delta
+  field_simp
+
+/-- `σk ≠ 0` for `k ≠ 0` and `σ = ±1`. -/
+theorem mul_sign_dichotomy (k : ℤ) (hk : k ≠ 0) (σ : ℝ) (hσ : σ ∈ sigmaSet) :
+    0 < σ * (k : ℝ) ∨ σ * (k : ℝ) < 0 := by
+  have hk' : (k : ℝ) ≠ 0 := by exact_mod_cast hk
+  have hσ' : σ ≠ 0 := by
+    rcases mem_sigmaSet.mp hσ with h | h <;> rw [h] <;> norm_num
+  have hne : σ * (k : ℝ) ≠ 0 := mul_ne_zero hσ' hk'
+  rcases lt_or_gt_of_ne hne with h | h
+  · exact Or.inr h
+  · exact Or.inl h
+
+/-- **The signed form.** -/
+theorem abs_b_signed (t : ℕ) (k : ℤ) (hk : k ≠ 0) (σ : ℝ) (hσ : σ ∈ sigmaSet) :
+    (0 < σ * (k : ℝ) → |b t k σ| = ((|k| : ℤ) : ℝ) * Delta - aOf t) ∧
+    (σ * (k : ℝ) < 0 → |b t k σ| = ((|k| : ℤ) : ℝ) * Delta + aOf t) := by
+  have hid := b_eq_signed t k hσ
+  have hcast : ((|k| : ℤ) : ℝ) = |(k : ℝ)| := Int.cast_abs
+  have hD : 0 < Delta := Delta_pos
+  have ha4 : aOf t ≤ Delta / 4 := aOf_le_delta_div_four t
+  have han : 0 ≤ aOf t := aOf_nonneg t
+  have hkabs : 0 < |(k : ℝ)| := abs_pos.mpr (by exact_mod_cast hk)
+  have hk1 : (1 : ℝ) ≤ |(k : ℝ)| := by
+    have h := Int.one_le_abs hk
+    exact_mod_cast h
+  constructor
+  · intro hpos
+    rcases mem_sigmaSet.mp hσ with h | h
+    · -- `σ = -1`, `k < 0` : modulus `|k|Δ - aOf t`
+      have hkneg : (k : ℝ) < 0 := by rw [h] at hpos; nlinarith
+      have hkge : (1 : ℝ) ≤ -(k : ℝ) := by rw [← abs_of_neg hkneg]; exact hk1
+      have hb : 0 < -aOf t - (k : ℝ) * Delta := by nlinarith
+      rw [hid, h, neg_one_mul, abs_of_pos hb, hcast, abs_of_neg hkneg]
+      ring
+    · -- `σ = 1`, `k > 0` : modulus `|k|Δ - aOf t`
+      have hkpos : (0 : ℝ) < (k : ℝ) := by rw [h] at hpos; nlinarith
+      have hkge : (1 : ℝ) ≤ (k : ℝ) := by rw [← abs_of_pos hkpos]; exact hk1
+      have hb : aOf t - (k : ℝ) * Delta < 0 := by nlinarith
+      rw [hid, h, one_mul, abs_of_neg hb, hcast, abs_of_pos hkpos]
+      ring
+  · intro hneg
+    rcases mem_sigmaSet.mp hσ with h | h
+    · -- `σ = -1`, `k > 0` : modulus `|k|Δ + aOf t`
+      have hkpos : (0 : ℝ) < (k : ℝ) := by rw [h] at hneg; nlinarith
+      have hkge : (1 : ℝ) ≤ (k : ℝ) := by rw [← abs_of_pos hkpos]; exact hk1
+      have hb : -aOf t - (k : ℝ) * Delta < 0 := by nlinarith
+      rw [hid, h, neg_one_mul, abs_of_neg hb, hcast, abs_of_pos hkpos]
+      ring
+    · -- `σ = 1`, `k < 0` : modulus `|k|Δ + aOf t`
+      have hkneg : (k : ℝ) < 0 := by rw [h] at hneg; nlinarith
+      have hkge : (1 : ℝ) ≤ -(k : ℝ) := by rw [← abs_of_neg hkneg]; exact hk1
+      have hb : 0 < aOf t - (k : ℝ) * Delta := by nlinarith
+      rw [hid, h, one_mul, abs_of_pos hb, hcast, abs_of_neg hkneg]
+      ring
+
+/-- `arcsin|s₂ t|` is strictly increasing on `1 ≤ t ≤ 589`. -/
+theorem arcsin_abs_s2_strictMono {t t' : ℕ} (h1 : 1 ≤ t) (h2 : t ≤ 589) (h1' : 1 ≤ t')
+    (h2' : t' ≤ 589) (htt : t < t') :
+    Real.arcsin |s2 t| < Real.arcsin |s2 t'| :=
+  Real.arcsin_lt_arcsin (by linarith [abs_nonneg (s2 t)]) (abs_s2_strictMono h1 h2 h1' h2' htt)
+    (le_of_lt (abs_s2_lt_one t' h1' h2'))
+
+/-- `|b|` is strictly antitone in `t` on the branch `σk > 0`. -/
+theorem abs_b_strictAnti_of_mul_pos {t t' : ℕ} (h1 : 1 ≤ t) (h2 : t ≤ 589) (h1' : 1 ≤ t')
+    (h2' : t' ≤ 589) (htt : t < t') (k : ℤ) (σ : ℝ) (hσ : σ ∈ sigmaSet)
+    (hpos : 0 < σ * (k : ℝ)) : |b t' k σ| < |b t k σ| := by
+  have hk : k ≠ 0 := by rintro rfl; simp at hpos
+  rw [(abs_b_signed t k hk σ hσ).1 hpos, (abs_b_signed t' k hk σ hσ).1 hpos]
+  have hA : aOf t < aOf t' := by
+    unfold aOf
+    rw [div_lt_div_iff_of_pos_right log_two_pos]
+    exact arcsin_abs_s2_strictMono h1 h2 h1' h2' htt
+  linarith
+
+/-- `|b|` is strictly monotone in `t` on the branch `σk < 0`. -/
+theorem abs_b_strictMono_of_mul_neg {t t' : ℕ} (h1 : 1 ≤ t) (h2 : t ≤ 589) (h1' : 1 ≤ t')
+    (h2' : t' ≤ 589) (htt : t < t') (k : ℤ) (σ : ℝ) (hσ : σ ∈ sigmaSet)
+    (hneg : σ * (k : ℝ) < 0) : |b t k σ| < |b t' k σ| := by
+  have hk : k ≠ 0 := by rintro rfl; simp at hneg
+  rw [(abs_b_signed t k hk σ hσ).2 hneg, (abs_b_signed t' k hk σ hσ).2 hneg]
+  have hA : aOf t < aOf t' := by
+    unfold aOf
+    rw [div_lt_div_iff_of_pos_right log_two_pos]
+    exact arcsin_abs_s2_strictMono h1 h2 h1' h2' htt
+  linarith
+
+/-! ## The two edge conditions of `modeSetOf 10 T` -/
+
+/-- `EdgeOne T`: a mode at `t = 1` on the branch `σk < 0` has a neighbour at `t = 2` still
+inside `|b| ≤ T`. -/
+def EdgeOne (T : ℝ) : Prop :=
+  ∀ (k : ℤ) (σ : ℝ), σ ∈ sigmaSet → σ * (k : ℝ) < 0 → |b 1 k σ| ≤ T → |b 2 k σ| ≤ T
+
+/-- `EdgeTen T`: a mode at `t = 10` on the branch `σk > 0` has a neighbour at `t = 9` still
+inside `|b| ≤ T`. -/
+def EdgeTen (T : ℝ) : Prop :=
+  ∀ (k : ℤ) (σ : ℝ), σ ∈ sigmaSet → 0 < σ * (k : ℝ) → |b 10 k σ| ≤ T → |b 9 k σ| ≤ T
+
+/-- Integrality: `n < |k|` in `ℝ` forces `n + 1 ≤ |k|`. -/
+theorem add_one_le_abs_cast {n : ℕ} {k : ℤ} (h : (n : ℝ) < ((|k| : ℤ) : ℝ)) :
+    (n : ℝ) + 1 ≤ ((|k| : ℤ) : ℝ) := by
+  have hZ : (n : ℤ) < |k| := by exact_mod_cast h
+  have hZ1 : (n : ℤ) + 1 ≤ |k| := by omega
+  have := (Int.cast_le (R := ℝ)).mpr hZ1
+  push_cast at this ⊢
+  linarith
+
+theorem edgeTen_of_gap (T : ℝ) (n : ℕ)
+    (h1 : (n : ℝ) * Delta ≤ T) (h2 : T < ((n : ℝ) + 1) * Delta - Delta / 4) : EdgeTen T := by
+  intro k σ hσ hpos hbT
+  have hk : k ≠ 0 := by rintro rfl; simp at hpos
+  have hb10 := (abs_b_signed 10 k hk σ hσ).1 hpos
+  have hb9 := (abs_b_signed 9 k hk σ hσ).1 hpos
+  have ha10 : aOf 10 ≤ Delta / 4 := aOf_le_delta_div_four 10
+  have ha9 : 0 ≤ aOf 9 := aOf_nonneg 9
+  have hkle : ((|k| : ℤ) : ℝ) ≤ (n : ℝ) := by
+    by_contra hcon
+    push_neg at hcon
+    have hR : (n : ℝ) + 1 ≤ ((|k| : ℤ) : ℝ) := add_one_le_abs_cast hcon
+    have hge : ((n : ℝ) + 1) * Delta - Delta / 4 ≤ |b 10 k σ| := by
+      rw [hb10]
+      nlinarith [Delta_pos]
+    linarith
+  rw [hb9]
+  have hmul : ((|k| : ℤ) : ℝ) * Delta ≤ (n : ℝ) * Delta :=
+    mul_le_mul_of_nonneg_right hkle Delta_pos.le
+  linarith
+
+theorem edgeOne_of_gap (T : ℝ) (n : ℕ)
+    (h1 : (n : ℝ) * Delta + Delta / 4 ≤ T) (h2 : T < ((n : ℝ) + 1) * Delta + Delta / 6) :
+    EdgeOne T := by
+  intro k σ hσ hneg hbT
+  have hk : k ≠ 0 := by rintro rfl; simp at hneg
+  have hb1 := (abs_b_signed 1 k hk σ hσ).2 hneg
+  have hb2 := (abs_b_signed 2 k hk σ hσ).2 hneg
+  have ha1 : Delta / 6 ≤ aOf 1 := by
+    have h := arcsin_abs_s2_ge (t := 1) (by norm_num) (by norm_num)
+    have hL : (0:ℝ) < Real.log 2 := log_two_pos
+    unfold aOf
+    rw [Delta_div_six, show Real.pi / (3 * Real.log 2) = (Real.pi / 3) / Real.log 2 from by
+      field_simp]
+    exact (div_le_div_iff_of_pos_right hL).mpr h
+  have ha2 : aOf 2 ≤ Delta / 4 := aOf_le_delta_div_four 2
+  have hkle : ((|k| : ℤ) : ℝ) ≤ (n : ℝ) := by
+    by_contra hcon
+    push_neg at hcon
+    have hR : (n : ℝ) + 1 ≤ ((|k| : ℤ) : ℝ) := add_one_le_abs_cast hcon
+    have hge : ((n : ℝ) + 1) * Delta + Delta / 6 ≤ |b 1 k σ| := by
+      rw [hb1]
+      nlinarith [Delta_pos]
+    linarith
+  rw [hb2]
+  have hmul : ((|k| : ℤ) : ℝ) * Delta ≤ (n : ℝ) * Delta :=
+    mul_le_mul_of_nonneg_right hkle Delta_pos.le
+  linarith
+
+/-! ## Point 1: the edge conditions at `T = 100` and `T = 500` -/
+
+lemma Delta_mul_log2 : Delta * Real.log 2 = 2 * Real.pi := by
+  unfold Delta; field_simp
+
+lemma Delta_lin (c : ℝ) : (c * Delta) * Real.log 2 = c * (2 * Real.pi) := by
+  rw [mul_assoc, Delta_mul_log2]
+
+lemma Delta_le_of (c T : ℝ) (h : c * (2 * Real.pi) ≤ T * Real.log 2) : c * Delta ≤ T := by
+  have hL : (0:ℝ) < Real.log 2 := log_two_pos
+  refine le_of_mul_le_mul_right ?_ hL
+  rw [Delta_lin c]; exact h
+
+lemma Delta_lt_of (c T : ℝ) (h : T * Real.log 2 < c * (2 * Real.pi)) : T < c * Delta := by
+  have hL : (0:ℝ) < Real.log 2 := log_two_pos
+  refine lt_of_mul_lt_mul_right ?_ hL.le
+  rw [Delta_lin c]; exact h
+
+lemma gapOne_100 : (10:ℝ) * Delta + Delta / 4 ≤ 100 := by
+  have hp : Real.pi < 3.141593 := Real.pi_lt_d6
+  have hl : (0.6931471803:ℝ) < Real.log 2 := Real.log_two_gt_d9
+  rw [show (10:ℝ) * Delta + Delta / 4 = (41/4) * Delta from by ring]
+  exact Delta_le_of (41/4) 100 (by nlinarith)
+
+lemma gapOne_100' : (100:ℝ) < ((10:ℝ) + 1) * Delta + Delta / 6 := by
+  have hp : (3.141592:ℝ) < Real.pi := Real.pi_gt_d6
+  have hl : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  rw [show ((10:ℝ) + 1) * Delta + Delta / 6 = (67/6) * Delta from by ring]
+  exact Delta_lt_of (67/6) 100 (by nlinarith)
+
+lemma gapTen_100 : (11:ℝ) * Delta ≤ 100 := by
+  have hp : Real.pi < 3.141593 := Real.pi_lt_d6
+  have hl : (0.6931471803:ℝ) < Real.log 2 := Real.log_two_gt_d9
+  exact Delta_le_of 11 100 (by nlinarith)
+
+lemma gapTen_100' : (100:ℝ) < ((11:ℝ) + 1) * Delta - Delta / 4 := by
+  have hp : (3.141592:ℝ) < Real.pi := Real.pi_gt_d6
+  have hl : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  rw [show ((11:ℝ) + 1) * Delta - Delta / 4 = (47/4) * Delta from by ring]
+  exact Delta_lt_of (47/4) 100 (by nlinarith)
+
+lemma gapOne_500 : (54:ℝ) * Delta + Delta / 4 ≤ 500 := by
+  have hp : Real.pi < 3.141593 := Real.pi_lt_d6
+  have hl : (0.6931471803:ℝ) < Real.log 2 := Real.log_two_gt_d9
+  rw [show (54:ℝ) * Delta + Delta / 4 = (217/4) * Delta from by ring]
+  exact Delta_le_of (217/4) 500 (by nlinarith)
+
+lemma gapOne_500' : (500:ℝ) < ((54:ℝ) + 1) * Delta + Delta / 6 := by
+  have hp : (3.141592:ℝ) < Real.pi := Real.pi_gt_d6
+  have hl : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  rw [show ((54:ℝ) + 1) * Delta + Delta / 6 = (331/6) * Delta from by ring]
+  exact Delta_lt_of (331/6) 500 (by nlinarith)
+
+lemma gapTen_500 : (55:ℝ) * Delta ≤ 500 := by
+  have hp : Real.pi < 3.141593 := Real.pi_lt_d6
+  have hl : (0.6931471803:ℝ) < Real.log 2 := Real.log_two_gt_d9
+  exact Delta_le_of 55 500 (by nlinarith)
+
+lemma gapTen_500' : (500:ℝ) < ((55:ℝ) + 1) * Delta - Delta / 4 := by
+  have hp : (3.141592:ℝ) < Real.pi := Real.pi_gt_d6
+  have hl : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  rw [show ((55:ℝ) + 1) * Delta - Delta / 4 = (223/4) * Delta from by ring]
+  exact Delta_lt_of (223/4) 500 (by nlinarith)
+
+theorem edges_100 : EdgeOne 100 ∧ EdgeTen 100 :=
+  ⟨edgeOne_of_gap 100 10 gapOne_100 gapOne_100', edgeTen_of_gap 100 11 gapTen_100 gapTen_100'⟩
+
+theorem edges_500 : EdgeOne 500 ∧ EdgeTen 500 :=
+  ⟨edgeOne_of_gap 500 54 gapOne_500 gapOne_500', edgeTen_of_gap 500 55 gapTen_500 gapTen_500'⟩
+
+/-! ## Point 3: the parametric off-diagonal count `NoffOf` -/
+
+/-- The frequency of a mode of `modeSetOf tmax T`. -/
+noncomputable def modeBOf (tmax : ℕ) (T : ℝ) (p : ↥(modeSetOf tmax T)) : ℝ :=
+  b p.1.1 p.1.2.1 p.1.2.2
+
+/-- The relative off-diagonal interference of a mode of `modeSetOf tmax T`. -/
+noncomputable def offRatioOf (tmax : ℕ) (T X : ℝ) (j : ↥(modeSetOf tmax T)) : ℝ :=
+  (∑ i ∈ Finset.univ.erase j, ‖gramOf (modeBOf tmax T) X i j‖)
+    / ‖gramOf (modeBOf tmax T) X j j‖
+
+/-- **`N_off` for a general truncation.** -/
+noncomputable def NoffOf (tmax : ℕ) (T X δ : ℝ) : ℕ :=
+  (Finset.univ.filter fun j : ↥(modeSetOf tmax T) => δ < offRatioOf tmax T X j).card
+
+/-- **The close-neighbour criterion**, parametrically in `tmax`. -/
+theorem NoffOf_eq_card_of_close (tmax : ℕ) (T X δ : ℝ) (hX : 1 ≤ X) (hδ : δ < 1 / 50)
+    (h : ∀ j : ↥(modeSetOf tmax T), ∃ i ∈ Finset.univ.erase j,
+      |modeBOf tmax T i - modeBOf tmax T j| * Real.log X ≤ 1.55) :
+    NoffOf tmax T X δ = (modeSetOf tmax T).card := by
+  have hfilter : (Finset.univ.filter fun j : ↥(modeSetOf tmax T) =>
+      δ < offRatioOf tmax T X j) = Finset.univ := by
+    refine Finset.filter_true_of_mem ?_
+    intro j _
+    obtain ⟨i, hi, hθ⟩ := h j
+    have hfloor : (1 : ℕ) ≤ ⌊X⌋₊ := Nat.le_floor (by push_cast; exact hX)
+    have hH : (0:ℝ) < harmonicR ⌊X⌋₊ := harmonicR_pos hfloor
+    have hnum : (1/50) * harmonicR ⌊X⌋₊ ≤ ‖gramOf (modeBOf tmax T) X i j‖ :=
+      norm_gramOf_ge _ X hX i j hθ
+    have hden : ‖gramOf (modeBOf tmax T) X j j‖ = harmonicR ⌊X⌋₊ := by
+      rw [gramOf_diag, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hH]
+    have hle : ‖gramOf (modeBOf tmax T) X i j‖
+        ≤ ∑ i' ∈ Finset.univ.erase j, ‖gramOf (modeBOf tmax T) X i' j‖ :=
+      Finset.single_le_sum (f := fun i' => ‖gramOf (modeBOf tmax T) X i' j‖)
+        (fun _ _ => norm_nonneg _) hi
+    have hδH : δ * harmonicR ⌊X⌋₊ < (1/50) * harmonicR ⌊X⌋₊ :=
+      mul_lt_mul_of_pos_right hδ hH
+    unfold offRatioOf
+    rw [hden, lt_div_iff₀ hH]
+    linarith
+  unfold NoffOf
+  rw [hfilter, Finset.card_univ, Fintype.card_coe]
+
+/-! ## Point 2: the uniform step bound on `1 ≤ t ≤ 9` -/
+
+/-- **The frequency step is at most `0.12 / ln 2 < 0.174`.**  The `k` and `σ` cancel exactly. -/
+theorem b_step_t_le (t : ℕ) (ht1 : 1 ≤ t) (ht9 : t ≤ 9) (k : ℤ) (σ : ℝ)
+    (hσ : σ ∈ sigmaSet) :
+    |b (t + 1) k σ - b t k σ| ≤ 0.12 / Real.log 2 := by
+  have hL : (0:ℝ) < Real.log 2 := log_two_pos
+  have ht589 : t + 1 ≤ 589 := by omega
+  have hmono : Real.arcsin |s2 t| < Real.arcsin |s2 (t + 1)| :=
+    arcsin_abs_s2_strictMono ht1 (by omega) (by omega) ht589 (by omega)
+  have hdiff : b (t + 1) k σ - b t k σ
+      = (Real.arcsin (σ * |s2 (t + 1)|) - Real.arcsin (σ * |s2 t|)) / Real.log 2 := by
+    rw [b_eq_affine, b_eq_affine]
+    field_simp
+    ring
+  have habs : |Real.arcsin (σ * |s2 (t + 1)|) - Real.arcsin (σ * |s2 t|)|
+      = Real.arcsin |s2 (t + 1)| - Real.arcsin |s2 t| := by
+    rw [arcsin_sigma (t + 1) hσ, arcsin_sigma t hσ, ← mul_sub, abs_mul,
+      abs_of_nonneg (sub_nonneg.mpr hmono.le)]
+    rcases mem_sigmaSet.mp hσ with h | h <;> rw [h] <;> norm_num
+  rw [hdiff, abs_div, abs_of_pos hL, habs, div_le_iff₀ hL]
+  have hb0 : 0 < |s2 t| := s2_abs_pos t ht1 (by omega)
+  have hle : |s2 t| < |s2 (t + 1)| :=
+    abs_s2_strictMono ht1 (by omega) (by omega) ht589 (by omega)
+  have hlt1 : |s2 (t + 1)| < 1 := abs_s2_lt_one (t + 1) (by omega) ht589
+  have hMVT := arcsin_sub_le hb0 hle.le hlt1
+  have hd0 : 0 ≤ |s2 (t + 1)| - |s2 t| := by linarith
+  have hinv0 : 0 ≤ 1 / Real.sqrt (1 - |s2 (t + 1)| ^ 2) := by positivity
+  have hrew : (|s2 (t + 1)| - |s2 t|) / Real.sqrt (1 - |s2 (t + 1)| ^ 2)
+      = (|s2 (t + 1)| - |s2 t|) * (1 / Real.sqrt (1 - |s2 (t + 1)| ^ 2)) := by ring
+  rw [hrew] at hMVT
+  have hfin : (|s2 (t + 1)| - |s2 t|) * (1 / Real.sqrt (1 - |s2 (t + 1)| ^ 2)) ≤ 0.12 := by
+    interval_cases t <;>
+      nlinarith [hMVT, hd0, hinv0, abs_s2_gap_1, inv_sqrt_bound_1, abs_s2_gap_2,
+        inv_sqrt_bound_2, abs_s2_gap_3, inv_sqrt_bound_3, abs_s2_gap_4, inv_sqrt_bound_4,
+        abs_s2_gap_5, inv_sqrt_bound_5, abs_s2_gap_6, inv_sqrt_bound_6, abs_s2_gap_7,
+        inv_sqrt_bound_7, abs_s2_gap_8, inv_sqrt_bound_8, abs_s2_gap_9, inv_sqrt_bound_9]
+  have h12 : (0.12 : ℝ) / Real.log 2 * Real.log 2 = 0.12 := by field_simp
+  linarith [le_trans hMVT hfin]
+
+/-! ## Point 4: every mode has a close neighbour, and the §6.4.8 conclusion -/
+
+lemma step_t_num_bound : 0.12 / Real.log 2 ≤ 0.174 := by
+  have hL : (0:ℝ) < Real.log 2 := log_two_pos
+  have hl : (0.6931471803:ℝ) < Real.log 2 := Real.log_two_gt_d9
+  rw [div_le_iff₀ hL]
+  nlinarith
+
+lemma log_5000_le : Real.log 5000 ≤ 8.55 := by
+  have hpow : (5000 : ℝ) ^ 3 ≤ (2 : ℝ) ^ 37 := by norm_num
+  have h1 : Real.log ((5000 : ℝ) ^ 3) ≤ Real.log ((2 : ℝ) ^ 37) :=
+    Real.log_le_log (by positivity) hpow
+  rw [Real.log_pow, Real.log_pow] at h1
+  have hl : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  push_cast at h1
+  nlinarith
+
+/-- **Every mode of `modeSetOf 10 T` has another mode within `0.174`.**  The neighbour keeps `k`
+and `σ` and moves `t` by one; the two edge cases `t = 10` (`σk > 0`) and `t = 1` (`σk < 0`) are
+supplied by `EdgeTen` and `EdgeOne`. -/
+theorem exists_close_neighbour_modeSetOf10 (T : ℝ) (hE1 : EdgeOne T) (hE10 : EdgeTen T)
+    (x : ↥(modeSetOf 10 T)) :
+    ∃ y ∈ Finset.univ.erase x, |modeBOf 10 T y - modeBOf 10 T x| ≤ 0.174 := by
+  obtain ⟨⟨t, k, σ⟩, hx⟩ := x
+  obtain ⟨htI, hσ, hk0, hbT⟩ := (mem_modeSetOf (tmax := 10)).mp hx
+  have ht1 : 1 ≤ t := (Finset.mem_Icc.mp htI).1
+  have ht10 : t ≤ 10 := (Finset.mem_Icc.mp htI).2
+  have hstep : ∀ s : ℕ, 1 ≤ s → s ≤ 9 → |b s k σ - b (s + 1) k σ| ≤ 0.174 := by
+    intro s h1 h9
+    rw [abs_sub_comm]
+    exact (b_step_t_le s h1 h9 k σ hσ).trans step_t_num_bound
+  rcases mul_sign_dichotomy k hk0 σ hσ with hpos | hneg
+  · by_cases ht : t = 10
+    · subst ht
+      have hb9 : |b 9 k σ| ≤ T := hE10 k σ hσ hpos hbT
+      have hmem : (9, k, σ) ∈ modeSetOf 10 T :=
+        (mem_modeSetOf (tmax := 10)).mpr
+          ⟨Finset.mem_Icc.mpr ⟨by norm_num, by norm_num⟩, hσ, hk0, hb9⟩
+      refine ⟨⟨(9, k, σ), hmem⟩, ?_, ?_⟩
+      · rw [Finset.mem_erase]
+        refine ⟨?_, Finset.mem_univ _⟩
+        intro hcontra
+        have := congrArg (fun p : ↥(modeSetOf 10 T) => p.1.1) hcontra
+        simp only at this
+        omega
+      · simp only [modeBOf]
+        exact hstep 9 (by norm_num) (by norm_num)
+    · have ht9 : t ≤ 9 := by omega
+      have hlt : |b (t + 1) k σ| < |b t k σ| :=
+        abs_b_strictAnti_of_mul_pos ht1 (by omega) (by omega) (by omega) (by omega) k σ hσ hpos
+      have hmem : (t + 1, k, σ) ∈ modeSetOf 10 T :=
+        (mem_modeSetOf (tmax := 10)).mpr
+          ⟨Finset.mem_Icc.mpr ⟨by omega, by omega⟩, hσ, hk0, hlt.le.trans hbT⟩
+      refine ⟨⟨(t + 1, k, σ), hmem⟩, ?_, ?_⟩
+      · rw [Finset.mem_erase]
+        refine ⟨?_, Finset.mem_univ _⟩
+        intro hcontra
+        have := congrArg (fun p : ↥(modeSetOf 10 T) => p.1.1) hcontra
+        simp only at this
+        omega
+      · simp only [modeBOf]
+        rw [abs_sub_comm]
+        exact hstep t ht1 ht9
+  · by_cases ht : t = 1
+    · subst ht
+      have hb2 : |b 2 k σ| ≤ T := hE1 k σ hσ hneg hbT
+      have hmem : (2, k, σ) ∈ modeSetOf 10 T :=
+        (mem_modeSetOf (tmax := 10)).mpr
+          ⟨Finset.mem_Icc.mpr ⟨by norm_num, by norm_num⟩, hσ, hk0, hb2⟩
+      refine ⟨⟨(2, k, σ), hmem⟩, ?_, ?_⟩
+      · rw [Finset.mem_erase]
+        refine ⟨?_, Finset.mem_univ _⟩
+        intro hcontra
+        have := congrArg (fun p : ↥(modeSetOf 10 T) => p.1.1) hcontra
+        simp only at this
+        omega
+      · simp only [modeBOf]
+        rw [abs_sub_comm]
+        exact hstep 1 (by norm_num) (by norm_num)
+    · have ht2 : 2 ≤ t := by omega
+      have hlt : |b (t - 1) k σ| < |b t k σ| := by
+        have h := abs_b_strictMono_of_mul_neg (t := t - 1) (t' := t) (by omega) (by omega)
+          (by omega) (by omega) (by omega) k σ hσ hneg
+        simpa using h
+      have hmem : (t - 1, k, σ) ∈ modeSetOf 10 T :=
+        (mem_modeSetOf (tmax := 10)).mpr
+          ⟨Finset.mem_Icc.mpr ⟨by omega, by omega⟩, hσ, hk0, hlt.le.trans hbT⟩
+      refine ⟨⟨(t - 1, k, σ), hmem⟩, ?_, ?_⟩
+      · rw [Finset.mem_erase]
+        refine ⟨?_, Finset.mem_univ _⟩
+        intro hcontra
+        have := congrArg (fun p : ↥(modeSetOf 10 T) => p.1.1) hcontra
+        simp only at this
+        omega
+      · simp only [modeBOf]
+        have h := hstep (t - 1) (by omega) (by omega)
+        have h' : t - 1 + 1 = t := by omega
+        rw [h'] at h
+        exact h
+
+/-- **The §6.4.8 conclusion at `X = 5000`**, conditionally on the two edge conditions. -/
+theorem NoffOf_eq_card_param_5000 (T δ : ℝ) (hδ : δ < 1 / 50)
+    (hE1 : EdgeOne T) (hE10 : EdgeTen T) :
+    NoffOf 10 T 5000 δ = (modeSetOf 10 T).card := by
+  refine NoffOf_eq_card_of_close 10 T 5000 δ (by norm_num) hδ fun j => ?_
+  obtain ⟨i, hi, hdist⟩ := exists_close_neighbour_modeSetOf10 T hE1 hE10 j
+  refine ⟨i, hi, ?_⟩
+  have hlog : Real.log 5000 ≤ 8.55 := log_5000_le
+  have hlog0 : (0:ℝ) ≤ Real.log 5000 := Real.log_nonneg (by norm_num)
+  calc |modeBOf 10 T i - modeBOf 10 T j| * Real.log 5000
+      ≤ 0.174 * 8.55 := mul_le_mul hdist hlog hlog0 (by norm_num)
+    _ ≤ 1.55 := by norm_num
+
+/-- **`N_off = #modeSet` at `t_max = 10`, `T = 100`, `X = 5000`, `δ = 10⁻²`.** -/
+theorem NoffOf_10_100 : NoffOf 10 100 5000 (1/100) = (modeSetOf 10 100).card :=
+  NoffOf_eq_card_param_5000 100 (1/100) (by norm_num) edges_100.1 edges_100.2
+
+/-- **`N_off = #modeSet` at `t_max = 10`, `T = 500`, `X = 5000`, `δ = 10⁻²`.** -/
+theorem NoffOf_10_500 : NoffOf 10 500 5000 (1/100) = (modeSetOf 10 500).card :=
+  NoffOf_eq_card_param_5000 500 (1/100) (by norm_num) edges_500.1 edges_500.2
+
+end FrequencyGrids

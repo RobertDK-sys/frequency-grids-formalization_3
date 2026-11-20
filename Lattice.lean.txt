@@ -1,0 +1,143 @@
+/-
+Copyright: formalization accompanying "Algebraic Frequency Grids, Harmonic Resonances
+and Primality" (vf4).  Unconditional part, item 2.
+
+# The Dirac-comb of `b`-frequencies
+
+  b(t, k, σ) = (arcsin(σ |s2(t)|) − 2kπ) / ln 2 ,    k ∈ ℤ,  σ ∈ {−1, +1}.
+
+The lattice step is exactly `−2π/ln 2`, independently of `t`, `k` and `σ`, and `k ↦ b(t,k,σ)`
+is injective.  Consequently the internal phase defect `N_phase` vanishes identically.
+-/
+import FrequencyGrids.Basic
+
+namespace FrequencyGrids
+
+/-- `b(t, k, σ) = (arcsin(σ |s2(t)|) − 2kπ) / ln 2`, the frequency of the dual construction. -/
+noncomputable def b (t : ℕ) (k : ℤ) (σ : ℝ) : ℝ :=
+  (Real.arcsin (σ * |s2 t|) - 2 * (k : ℝ) * Real.pi) / Real.log 2
+
+theorem log_two_pos : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+
+theorem log_two_ne_zero : (Real.log 2 : ℝ) ≠ 0 := ne_of_gt log_two_pos
+
+/-- The affine form of `b` in the index `k`. -/
+theorem b_eq_affine (t : ℕ) (σ : ℝ) (k : ℤ) :
+    b t k σ = Real.arcsin (σ * |s2 t|) / Real.log 2
+      - (2 * Real.pi / Real.log 2) * (k : ℝ) := by
+  unfold b
+  rw [sub_div]
+  congr 1
+  field_simp
+
+/-- **Constant lattice step.**  `b(t,k+1,σ) − b(t,k,σ) = −2π/ln 2`. -/
+theorem b_step (t : ℕ) (k : ℤ) (σ : ℝ) :
+    b t (k + 1) σ - b t k σ = -(2 * Real.pi / Real.log 2) := by
+  rw [b_eq_affine, b_eq_affine]
+  push_cast
+  ring
+
+/-- The lattice step does not depend on `k`, `t` or `σ` (stated for two consecutive indices
+and two arbitrary triplets). -/
+theorem b_step_uniform (t t' : ℕ) (k k' : ℤ) (σ σ' : ℝ) :
+    b t (k + 1) σ - b t k σ = b t' (k' + 1) σ' - b t' k' σ' := by
+  rw [b_step, b_step]
+
+/-- `k ↦ b(t,k,σ)` is strictly decreasing, hence injective: distinct lattice indices give
+distinct frequencies. -/
+theorem b_strictAnti (t : ℕ) (σ : ℝ) : StrictAnti fun k : ℤ => b t k σ := by
+  have hc : (0 : ℝ) < 2 * Real.pi / Real.log 2 := by
+    have := Real.pi_pos
+    positivity
+  intro k1 k2 hk
+  simp only
+  rw [b_eq_affine, b_eq_affine]
+  have hcast : (k1 : ℝ) < (k2 : ℝ) := by exact_mod_cast hk
+  nlinarith
+
+theorem b_injective (t : ℕ) (σ : ℝ) : Function.Injective fun k : ℤ => b t k σ :=
+  (b_strictAnti t σ).injective
+
+/-- The internal phase defect of the lattice at index `k`. -/
+noncomputable def phaseDefect (t : ℕ) (k : ℤ) (σ : ℝ) : ℝ :=
+  b t (k + 1) σ - b t k σ + 2 * Real.pi / Real.log 2
+
+/-- **The phase relation is exact by construction**: `δb_{t,k,σ} = 0`. -/
+theorem phaseDefect_eq_zero (t : ℕ) (k : ℤ) (σ : ℝ) : phaseDefect t k σ = 0 := by
+  unfold phaseDefect
+  rw [b_step]
+  ring
+
+/-- `N_phase`: the number of triplets in a finite truncation whose phase defect is nonzero. -/
+noncomputable def Nphase (S : Finset (ℕ × ℤ × ℝ)) : ℕ :=
+  (S.filter fun p => phaseDefect p.1 p.2.1 p.2.2 ≠ 0).card
+
+/-- **`N_phase = 0` exactly, for every truncation.** -/
+theorem Nphase_eq_zero (S : Finset (ℕ × ℤ × ℝ)) : Nphase S = 0 := by
+  have h : (S.filter fun p => phaseDefect p.1 p.2.1 p.2.2 ≠ 0) = ∅ := by
+    apply Finset.filter_false_of_mem
+    intro p _
+    simp [phaseDefect_eq_zero]
+  unfold Nphase
+  rw [h, Finset.card_empty]
+
+/-! ## Weighted averages of lattice frequencies
+
+The note this section records is conceptual, not a statement of the development; what is
+proved below is its algebraic core.
+
+Because `b` is affine in the index `k` (`b_eq_affine`), a rational weighted average of two
+lattice frequencies is *again* a lattice frequency: the one belonging to the interpolated
+index `(N₁ k₁ + N₂ k₂)/(N₁ + N₂)`, which is rational rather than integral.  The weighted
+combination the note calls `b_quantique`,
+`(N₁ * b_mathematical_1 + N₂ * b_mathematical_2) / (N₁ + N₂)` with `N₁ + N₂ ≠ 0`, therefore
+needs no new object: it is `b` at a rational index (`b_weighted_avg`), and with positive
+weights it lies strictly between the two frequencies it averages
+(`b_weighted_avg_between`).
+
+Two limits of the argument, stated here so the note is not read as more than it is:
+
+* closure under weighted averaging is a property of *any* family affine in one index, so it
+  does not by itself single out `b` among candidate frequencies; it shows only that
+  `b_quantique` is not an extra assumption;
+* what does single `b` out in this development is the band structure of
+  `FrequencyGrids/Band.lean`: `‖b‖` sits within `Δ/4` of a multiple of `Δ = 2π/ln 2`, the
+  deviation from that centre is exactly `|arcsin(σ|s₂ t|)|/ln 2`, and for `1 ≤ t ≤ 589` it is
+  at least `Δ/6`.  Any replacement of `b` would have to reproduce those, and the note's
+  claim that an arbitrary `b` cannot is a claim about the paper's spectral programme, not a
+  theorem of this development.
+-/
+
+/-- **Weighted averages stay in the family.**  For integer weights `N₁, N₂` with
+`N₁ + N₂ ≠ 0`, the weighted average of two lattice frequencies is the affine formula of `b`
+read at the interpolated index `(N₁ k₁ + N₂ k₂)/(N₁ + N₂)`. -/
+theorem b_weighted_avg (t : ℕ) (σ : ℝ) (k₁ k₂ : ℤ) (N₁ N₂ : ℤ) (hN : N₁ + N₂ ≠ 0) :
+    ((N₁ : ℝ) * b t k₁ σ + (N₂ : ℝ) * b t k₂ σ) / ((N₁ : ℝ) + (N₂ : ℝ))
+      = Real.arcsin (σ * |s2 t|) / Real.log 2
+        - (2 * Real.pi / Real.log 2) *
+            (((N₁ : ℝ) * (k₁ : ℝ) + (N₂ : ℝ) * (k₂ : ℝ)) / ((N₁ : ℝ) + (N₂ : ℝ))) := by
+  have hN' : ((N₁ : ℝ) + (N₂ : ℝ)) ≠ 0 := by
+    have h : ((N₁ + N₂ : ℤ) : ℝ) ≠ 0 := by exact_mod_cast hN
+    push_cast at h
+    exact h
+  rw [b_eq_affine t σ k₁, b_eq_affine t σ k₂]
+  field_simp
+  ring
+
+/-- **Interpolation is strict.**  With positive weights the weighted average lies strictly
+between the two frequencies, which is all that `b_quantique` adds to the lattice itself. -/
+theorem b_weighted_avg_between (t : ℕ) (σ : ℝ) {k₁ k₂ : ℤ} {N₁ N₂ : ℤ}
+    (hN₁ : 0 < N₁) (hN₂ : 0 < N₂) (hk : k₁ < k₂) :
+    b t k₂ σ < ((N₁ : ℝ) * b t k₁ σ + (N₂ : ℝ) * b t k₂ σ) / ((N₁ : ℝ) + (N₂ : ℝ)) ∧
+      ((N₁ : ℝ) * b t k₁ σ + (N₂ : ℝ) * b t k₂ σ) / ((N₁ : ℝ) + (N₂ : ℝ)) < b t k₁ σ := by
+  have hlt : b t k₂ σ < b t k₁ σ := b_strictAnti t σ hk
+  have hN₁' : (0 : ℝ) < (N₁ : ℝ) := by exact_mod_cast hN₁
+  have hN₂' : (0 : ℝ) < (N₂ : ℝ) := by exact_mod_cast hN₂
+  have hden : (0 : ℝ) < (N₁ : ℝ) + (N₂ : ℝ) := by linarith
+  constructor
+  · rw [lt_div_iff₀ hden]
+    nlinarith
+  · rw [div_lt_iff₀ hden]
+    nlinarith
+
+end FrequencyGrids

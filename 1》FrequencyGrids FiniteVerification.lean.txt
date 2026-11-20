@@ -1,0 +1,381 @@
+1》FrequencyGrids/FiniteVerification.lean
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.Real.Pi.Bounds
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+import FrequencyGrids.Lattice
+import FrequencyGrids.Uniqueness
+import FrequencyGrids.Enclosure
+import FrequencyGrids.Neighbour
+import FrequencyGrids.Parametric
+import FrequencyGrids.Estimate
+import FrequencyGrids.Band
+import FrequencyGrids.MonotoneB
+
+namespace FrequencyGrids
+
+/-- Encadrements rationnels certifiés de `ln 2` et `π` (alignés sur `Counting.lean`). -/
+lemma log_two_bounds : (0.6931471803 : ℝ) < Real.log 2 ∧ Real.log 2 < 0.6931471808 :=
+  ⟨Real.log_two_gt_d9, Real.log_two_lt_d9⟩
+
+lemma pi_bounds : (3.141592 : ℝ) < Real.pi ∧ Real.pi < 3.141593 :=
+  ⟨Real.pi_gt_d6, Real.pi_lt_d6⟩
+
+/-- Borne numérique : `0.12 / log 2 ≤ 0.174`. -/
+lemma step_t_num_bound : 0.12 / Real.log 2 ≤ 0.174 := by
+  have hlog := log_two_bounds.1
+  rw [div_le_iff₀ log_two_pos]
+  linarith
+
+/-- Borne numérique : `log 5000 ≤ 8.55` via `5000^3 ≤ 2^37`. -/
+lemma log_5000_le : Real.log 5000 ≤ 8.55 := by
+  have hpow : (5000 : ℝ) ^ 3 ≤ (2 : ℝ) ^ 37 := by norm_num
+  have hlog_pow : 3 * Real.log 5000 ≤ 37 * Real.log 2 := by
+    have h1 : Real.log ((5000 : ℝ) ^ 3) ≤ Real.log ((2 : ℝ) ^ 37) :=
+      Real.log_le_log (by positivity) hpow
+    rwa [Real.log_pow, Real.log_pow, Nat.cast_ofNat, Nat.cast_ofNat] at h1
+  have hlog2 := log_two_bounds.2
+  linarith
+
+/-- Borne supérieure `aOf t ≤ Delta / 4` pour tout `t : ℕ`. -/
+lemma aOf_le_delta_div_four (t : ℕ) : aOf t ≤ Delta / 4 := by
+  unfold aOf Delta
+  have hlog_pos : 0 < Real.log 2 := log_two_pos
+  have hpi_pos : 0 < Real.pi := Real.pi_pos
+  rw [div_le_div_iff₀ hlog_pos (by positivity)]
+  calc Real.arcsin |s2 t| * (4 * Real.log 2)
+      ≤ (Real.pi / 2) * (4 * Real.log 2) := by
+        gcongr
+        exact Real.arcsin_le_pi_div_two |s2 t|
+    _ = (2 * Real.pi / Real.log 2) * Real.log 2 / 4 * (4 * Real.log 2) := by
+        have hne : Real.log 2 ≠ 0 := hlog_pos.ne'
+        field_simp [hne]
+        ring
+    _ = (2 * Real.pi / Real.log 2) / 4 * (Real.log 2 * (4 * Real.log 2)) := by
+        have hne : Real.log 2 ≠ 0 := hlog_pos.ne'
+        field_simp [hne]
+        ring
+
+/-- Minoration `Delta / 6 ≤ aOf 1`, déduite de `arcsin_abs_s2_ge` pour `t = 1`. -/
+lemma delta_div_six_le_aOf_one : Delta / 6 ≤ aOf 1 := by
+  unfold aOf Delta
+  have h_arc : Real.pi / 3 ≤ Real.arcsin |s2 1| :=
+    arcsin_abs_s2_ge 1 (by norm_num) (by norm_num)
+  have hlog_pos : 0 < Real.log 2 := log_two_pos
+  have hpi_pos : 0 < Real.pi := Real.pi_pos
+  rw [div_le_div_iff₀ (by positivity) hlog_pos]
+  calc (2 * Real.pi / Real.log 2) / 6 * Real.log 2
+      = Real.pi / 3 := by
+        have hne : Real.log 2 ≠ 0 := hlog_pos.ne'
+        field_simp [hne]
+        ring
+    _ ≤ Real.arcsin |s2 1| := h_arc
+
+def EdgeOne (T : ℝ) : Prop :=
+  ∀ (k : ℤ) (σ : ℝ), σ ∈ sigmaSet → σ * (k : ℝ) < 0 → |b 1 k σ| ≤ T → |b 2 k σ| ≤ T
+
+def EdgeTen (T : ℝ) : Prop :=
+  ∀ (k : ℤ) (σ : ℝ), σ ∈ sigmaSet → 0 < σ * (k : ℝ) → |b 10 k σ| ≤ T → |b 9 k σ| ≤ T
+
+/-- Fermeture du bord `(t = 10, σ * k > 0)` lorsque `n * Δ ≤ T < (n + 1) * Δ - Δ / 4`. -/
+theorem edgeTen_of_gap (T : ℝ) (n : ℕ)
+    (h1 : (n : ℝ) * Delta ≤ T) (h2 : T < ((n : ℝ) + 1) * Delta - Delta / 4) :
+    EdgeTen T := by
+  intro k σ hσ hpos hbT
+  have hk_ne : k ≠ 0 := by
+    rintro rfl
+    simp at hpos
+  have h_signed10 := (abs_b_signed 10 k hk_ne σ hσ).1 hpos
+  have h_signed9 := (abs_b_signed 9 k hk_ne σ hσ).1 hpos
+  have h_a10 : aOf 10 ≤ Delta / 4 := aOf_le_delta_div_four 10
+  have h_a9_nonneg : 0 ≤ aOf 9 := by
+    unfold aOf
+    exact div_nonneg (Real.arcsin_nonneg.mpr (abs_nonneg _)) log_two_pos.le
+  have hm_eq : ((k.natAbs : ℕ) : ℝ) = |(k : ℝ)| := by
+    simp [Int.natAbs_cast]
+  have hm_le_n : k.natAbs ≤ n := by
+    by_contra h_gt
+    push_neg at h_gt
+    have hm_ge : ((n : ℝ) + 1) ≤ ((k.natAbs : ℕ) : ℝ) := by
+      exact_mod_cast h_gt
+    have h_delta_pos : 0 < Delta := Delta_pos
+    have h_ge : ((n : ℝ) + 1) * Delta - Delta / 4 ≤ |b 10 k σ| := by
+      rw [h_signed10, ← hm_eq]
+      nlinarith
+    linarith
+  have hm_le_n_real : ((k.natAbs : ℕ) : ℝ) ≤ (n : ℝ) := by exact_mod_cast hm_le_n
+  rw [h_signed9, ← hm_eq]
+  nlinarith
+
+/-- Fermeture du bord `(t = 1, σ * k < 0)` lorsque `n * Δ + Δ / 4 ≤ T < (n + 1) * Δ + Δ / 6`. -/
+theorem edgeOne_of_gap (T : ℝ) (n : ℕ)
+    (h1 : (n : ℝ) * Delta + Delta / 4 ≤ T) (h2 : T < ((n : ℝ) + 1) * Delta + Delta / 6) :
+    EdgeOne T := by
+  intro k σ hσ hneg hbT
+  have hk_ne : k ≠ 0 := by
+    rintro rfl
+    simp at hneg
+  have h_signed1 := (abs_b_signed 1 k hk_ne σ hσ).2 hneg
+  have h_signed2 := (abs_b_signed 2 k hk_ne σ hσ).2 hneg
+  have h_a1 : Delta / 6 ≤ aOf 1 := delta_div_six_le_aOf_one
+  have h_a2 : aOf 2 ≤ Delta / 4 := aOf_le_delta_div_four 2
+  have hm_eq : ((k.natAbs : ℕ) : ℝ) = |(k : ℝ)| := by
+    simp [Int.natAbs_cast]
+  have hm_le_n : k.natAbs ≤ n := by
+    by_contra h_gt
+    push_neg at h_gt
+    have hm_ge : ((n : ℝ) + 1) ≤ ((k.natAbs : ℕ) : ℝ) := by
+      exact_mod_cast h_gt
+    have h_delta_pos : 0 < Delta := Delta_pos
+    have h_ge : ((n : ℝ) + 1) * Delta + Delta / 6 ≤ |b 1 k σ| := by
+      rw [h_signed1, ← hm_eq]
+      nlinarith
+    linarith
+  have hm_le_n_real : ((k.natAbs : ℕ) : ℝ) ≤ (n : ℝ) := by exact_mod_cast hm_le_n
+  rw [h_signed2, ← hm_eq]
+  nlinarith
+
+theorem edges_100 : EdgeOne 100 ∧ EdgeTen 100 := by
+  have ⟨hpi_lo, hpi_hi⟩ := pi_bounds
+  have ⟨hlog_lo, hlog_hi⟩ := log_two_bounds
+  have hlog_pos : 0 < Real.log 2 := log_two_pos
+  refine ⟨edgeOne_of_gap 100 10 ?_ ?_, edgeTen_of_gap 100 11 ?_ ?_⟩
+  · unfold Delta
+    rw [div_add_div_same]
+    have hsub : ((10 : ℝ) * (2 * Real.pi) + 2 * Real.pi / 4) / Real.log 2 ≤ 100 := by
+      rw [div_le_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : (100 : ℝ) < (((10 : ℝ) + 1) * (2 * Real.pi) + 2 * Real.pi / 6) / Real.log 2 := by
+      rw [lt_div_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : ((11 : ℝ) * (2 * Real.pi)) / Real.log 2 ≤ 100 := by
+      rw [div_le_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : (100 : ℝ) < (((11 : ℝ) + 1) * (2 * Real.pi) - 2 * Real.pi / 4) / Real.log 2 := by
+      rw [lt_div_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+
+theorem edges_500 : EdgeOne 500 ∧ EdgeTen 500 := by
+  have ⟨hpi_lo, hpi_hi⟩ := pi_bounds
+  have ⟨hlog_lo, hlog_hi⟩ := log_two_bounds
+  have hlog_pos : 0 < Real.log 2 := log_two_pos
+  refine ⟨edgeOne_of_gap 500 54 ?_ ?_, edgeTen_of_gap 500 55 ?_ ?_⟩
+  · unfold Delta
+    have hsub : ((54 : ℝ) * (2 * Real.pi) + 2 * Real.pi / 4) / Real.log 2 ≤ 500 := by
+      rw [div_le_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : (500 : ℝ) < (((54 : ℝ) + 1) * (2 * Real.pi) + 2 * Real.pi / 6) / Real.log 2 := by
+      rw [lt_div_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : ((55 : ℝ) * (2 * Real.pi)) / Real.log 2 ≤ 500 := by
+      rw [div_le_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+  · unfold Delta
+    have hsub : (500 : ℝ) < (((55 : ℝ) + 1) * (2 * Real.pi) - 2 * Real.pi / 4) / Real.log 2 := by
+      rw [lt_div_iff₀ hlog_pos]
+      linarith
+    convert hsub using 1
+    ring
+
+/-- Écart de fréquence entre `t` et `t+1` pour `1 ≤ t ≤ 9`. -/
+theorem b_step_t_le (t : ℕ) (ht1 : 1 ≤ t) (ht9 : t ≤ 9) (k : ℤ) (σ : ℝ)
+    (hσ : σ ∈ sigmaSet) :
+    |b (t + 1) k σ - b t k σ| ≤ 0.12 / Real.log 2 := by
+  have harc_mono : Real.arcsin |s2 t| ≤ Real.arcsin |s2 (t + 1)| :=
+    (arcsin_abs_s2_strictMono ht1 (by omega : t + 1 ≤ 589) (Nat.lt_succ_self t)).le
+  have hb_diff : b (t + 1) k σ - b t k σ =
+      (Real.arcsin (σ * |s2 (t + 1)|) - Real.arcsin (σ * |s2 t|)) / Real.log 2 := by
+    simp only [b_eq_affine]
+    ring
+  rw [hb_diff, abs_div, abs_of_pos log_two_pos]
+  gcongr
+  have habs : |Real.arcsin (σ * |s2 (t + 1)|) - Real.arcsin (σ * |s2 t|)| =
+      Real.arcsin |s2 (t + 1)| - Real.arcsin |s2 t| := by
+    rw [arcsin_sigma (t + 1) σ hσ, arcsin_sigma t σ hσ, ← mul_sub, abs_mul,
+      abs_of_nonneg (sub_nonneg.mpr harc_mono)]
+    rcases mem_sigmaSet.mp hσ with rfl | rfl <;> simp
+  rw [habs]
+  have h_mvt := arcsin_sub_le
+    (s2_abs_pos (by omega) (by omega))
+    (abs_s2_strictMono ht1 (by omega : t + 1 ≤ 589) (Nat.lt_succ_self t))
+    (abs_s2_lt_one (by omega) (by omega))
+  interval_cases t <;> linarith [
+    abs_s2_gap_1, inv_sqrt_bound_1, abs_s2_gap_2, inv_sqrt_bound_2,
+    abs_s2_gap_3, inv_sqrt_bound_3, abs_s2_gap_4, inv_sqrt_bound_4,
+    abs_s2_gap_5, inv_sqrt_bound_5, abs_s2_gap_6, inv_sqrt_bound_6,
+    abs_s2_gap_7, inv_sqrt_bound_7, abs_s2_gap_8, inv_sqrt_bound_8,
+    abs_s2_gap_9, inv_sqrt_bound_9]
+
+/-- Propriété de voisin proche pour `modeSetOf 10 T` sous `EdgeOne T` et `EdgeTen T`. -/
+theorem exists_close_neighbour_modeSetOf10 (T : ℝ) (hE1 : EdgeOne T) (hE10 : EdgeTen T)
+    (x : ℕ × ℤ × ℝ) (hx : x ∈ modeSetOf 10 T) :
+    ∃ y ∈ modeSetOf 10 T, y ≠ x ∧ |modeB y - modeB x| ≤ 0.174 := by
+  rcases x with ⟨t, k, σ⟩
+  rcases (mem_modeSetOf 10 T).mp hx with ⟨ht1, ht10, hσ, hk0, hbT⟩
+  rcases mul_sign_dichotomy k hk0 σ hσ with h_pos | h_neg
+  · by_cases ht_top : t = 10
+    · subst ht_top
+      refine ⟨(9, k, σ), ?_, by decide, ?_⟩
+      · exact (mem_modeSetOf 10 T).mpr ⟨by omega, by omega, hσ, hk0, hE10 k σ hσ h_pos hbT⟩
+      · rw [abs_sub_comm]
+        exact (b_step_t_le 9 (by omega) (by omega) k σ hσ).trans step_t_num_bound
+    · have hlt : |b (t + 1) k σ| < |b t k σ| :=
+        abs_b_strictAnti_of_mul_pos ht1 (by omega) (Nat.lt_succ_self t) k σ hσ h_pos
+      refine ⟨(t + 1, k, σ), ?_, by intro h; injection h with h1; omega, ?_⟩
+      · exact (mem_modeSetOf 10 T).mpr ⟨by omega, by omega, hσ, hk0, hlt.le.trans hbT⟩
+      · rw [abs_sub_comm]
+        exact (b_step_t_le t ht1 (by omega) k σ hσ).trans step_t_num_bound
+  · by_cases ht_one : t = 1
+    · subst ht_one
+      refine ⟨(2, k, σ), ?_, by decide, ?_⟩
+      · exact (mem_modeSetOf 10 T).mpr ⟨by omega, by omega, hσ, hk0, hE1 k σ hσ h_neg hbT⟩
+      · exact (b_step_t_le 1 (by omega) (by omega) k σ hσ).trans step_t_num_bound
+    · have hlt : |b (t - 1) k σ| < |b t k σ| :=
+        abs_b_strictMono_of_mul_neg (by omega) (by omega) (by omega) k σ hσ h_neg
+      refine ⟨(t - 1, k, σ), ?_, by intro h; injection h with h1; omega, ?_⟩
+      · exact (mem_modeSetOf 10 T).mpr ⟨by omega, by omega, hσ, hk0, hlt.le.trans hbT⟩
+      · have hstep := b_step_t_le (t - 1) (by omega) (by omega) k σ hσ
+        have h' : t - 1 + 1 = t := by omega
+        rw [h'] at hstep
+        exact hstep.trans step_t_num_bound
+
+/-- Application à `X = 5000` et `δ < 1/50`. -/
+theorem NoffOf_eq_card_param_5000 (T δ : ℝ) (hδ : δ < 1 / 50)
+    (hE1 : EdgeOne T) (hE10 : EdgeTen T) :
+    NoffOf 10 T 5000 δ = (modeSetOf 10 T).card := by
+  refine NoffOf_eq_card_of_close 10 T 5000 δ (by norm_num) hδ fun j hj => ?_
+  rcases exists_close_neighbour_modeSetOf10 T hE1 hE10 j hj with ⟨i, hi, hij, hdist⟩
+  refine ⟨i, hi, hij, ?_⟩
+  calc |modeB i - modeB j| * Real.log 5000
+      ≤ 0.174 * 8.55 := mul_le_mul hdist log_5000_le (Real.log_nonneg (by norm_num)) (by norm_num)
+    _ ≤ 1.55 := by norm_num
+
+theorem NoffOf_10_100 : NoffOf 10 100 5000 (1 / 100) = (modeSetOf 10 100).card :=
+  NoffOf_eq_card_param_5000 100 (1 / 100) (by norm_num) edges_100.1 edges_100.2
+
+theorem NoffOf_10_500 : NoffOf 10 500 5000 (1 / 100) = (modeSetOf 10 500).card :=
+  NoffOf_eq_card_param_5000 500 (1 / 100) (by norm_num) edges_500.1 edges_500.2
+
+end FrequencyGrids
+
+
+
+
+2》FrequencyGrids/Conditional.lean
+import Mathlib.Analysis.Asymptotics.Lemmas
+import Mathlib.Topology.Algebra.Order.Field
+import Mathlib.Data.Real.Sqrt
+import FrequencyGrids.Conjectures
+import FrequencyGrids.Counting
+import FrequencyGrids.Structure
+import FrequencyGrids.Necessary
+
+open Filter Topology Asymptotics
+
+namespace FrequencyGrids
+
+/-- Déduction conditionnelle : `N_off = o(N_R)` et `N_van = o(N_R)` ⟹ `η_R → 1`. -/
+theorem etaR_tendsto_one_of_littleO
+    (X : ℝ → ℕ) (δ : ℝ → ℝ)
+    (h_off : (fun T => (Noff T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ)))
+    (h_van : (fun T => (Nvan T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ))) :
+    Tendsto (fun T => etaR T (X T) (δ T)) atTop (𝓝 1) := by
+  have h_div : Tendsto
+      (fun T => ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 0) := (h_off.add h_van).tendsto_div_nhds_zero
+  have h_lim : Tendsto
+      (fun T => 1 - ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 1) := by
+    simpa using tendsto_const_nhds.sub h_div
+  exact h_lim.congr fun T => (etaR_eq T (X T) (δ T)).symm
+
+/-- Réciproque partielle : `η_R → 1` ⟹ `N_van = o(N_R)`. Aucune hypothèse sur `δ`. -/
+theorem nvan_littleO_of_etaR_tendsto_one
+    (X : ℝ → ℕ) (δ : ℝ → ℝ)
+    (h : Tendsto (fun T => etaR T (X T) (δ T)) atTop (𝓝 1)) :
+    (fun T => (Nvan T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ)) := by
+  have hNR : ∀ᶠ T in atTop, (0 : ℝ) < (NR T : ℝ) := by
+    filter_upwards [eventually_NR_pos] with T hT
+    exact Nat.cast_pos.mpr hT
+  have hsum : Tendsto
+      (fun T => ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 0) := by
+    have h1 := (tendsto_const_nhds (x := (1 : ℝ))).sub h
+    rw [sub_self] at h1
+    refine h1.congr fun T => ?_
+    rw [etaR_eq]
+    ring
+  have hvan : Tendsto (fun T => (Nvan T (X T) (δ T) : ℝ) / (NR T : ℝ)) atTop (𝓝 0) := by
+    refine squeeze_zero'
+      (hNR.mono fun T hT => div_nonneg (Nat.cast_nonneg _) hT.le)
+      (hNR.mono fun T hT => ?_)
+      hsum
+    have h_le : (Nvan T (X T) (δ T) : ℝ) ≤
+        (Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ) := by
+      linarith [(Nat.cast_nonneg (Noff T (X T) (δ T)) : (0 : ℝ) ≤ _)]
+    exact div_le_div_of_nonneg_right h_le hT.le
+  exact (isLittleO_iff_tendsto' (hNR.mono fun T hT h0 => absurd h0 hT.ne')).mpr hvan
+
+/-- Minoration `44.12 * T - 600 ≤ (NR T : ℝ)` pour `T ≥ 0`, déduite de `Ntotal_approx`
+et `NR_eq_Ntotal`. -/
+lemma nr_ge_linear_sub (T : ℝ) (hT : 0 ≤ T) :
+    (44.12 : ℝ) * T - 600 ≤ (NR T : ℝ) := by
+  have h_approx := (abs_le.mp (Ntotal_approx T hT)).1
+  have h_nr_eq : (NR T : ℝ) = (Ntotal T : ℝ) := by
+    exact_mod_cast NR_eq_Ntotal T
+  linarith
+
+/-- Négation de `Eta_Tends_ToOne` : le témoin `X(T) = ⌊√T⌋` et `δ(T) = 1 / T`
+vérifie `X → +∞` et `δ → 0`, mais `η_R` ne tend pas vers `1` car cela imposerait
+`N_van = o(N_R)`, contredit par `X(T) ≤ (1/2) * N_R(T)` à terme. -/
+theorem not_Eta_Tends_ToOne : ¬ Eta_Tends_ToOne := by
+  intro h_conj
+  let X : ℝ → ℕ := fun T => ⌊Real.sqrt T⌋₊
+  let δ : ℝ → ℝ := fun T => 1 / T
+  have hX : Tendsto (fun T => (X T : ℝ)) atTop atTop := by
+    have hsqrt : Tendsto Real.sqrt atTop atTop := Real.tendsto_sqrt_atTop
+    refine tendsto_atTop_mono (fun T => ?_) (hsqrt.atTop_add tendsto_const_nhds)
+    have hfl : (Real.sqrt T : ℝ) - 1 < (X T : ℝ) :=
+      Nat.sub_one_lt_floor (Real.sqrt T)
+    linarith
+  have hδ : Tendsto δ atTop (𝓝 0) :=
+    tendsto_const_nhds.div_atTop tendsto_id
+  have hδ_nonneg : ∀ᶠ T in atTop, 0 ≤ δ T := by
+    filter_upwards [eventually_ge_atTop (0 : ℝ)] with T hT
+    exact div_nonneg zero_le_one hT
+  have hη : Tendsto (fun T => etaR T (X T) (δ T)) atTop (𝓝 1) :=
+    h_conj X δ hX hδ
+  have hvan : (fun T => (Nvan T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ)) :=
+    nvan_littleO_of_etaR_tendsto_one X δ hη
+  have hle : ∀ᶠ T in atTop, (X T : ℝ) ≤ (1 / 2 : ℝ) * (NR T : ℝ) := by
+    filter_upwards [eventually_ge_atTop (100 : ℝ)] with T hT
+    have hT0 : 0 ≤ T := by linarith
+    have h_nr_lo : (44.12 : ℝ) * T - 600 ≤ (NR T : ℝ) := nr_ge_linear_sub T hT0
+    have h_floor : (X T : ℝ) ≤ Real.sqrt T := Nat.floor_le (Real.sqrt_nonneg T)
+    have h_sqrt_le : Real.sqrt T ≤ T := by
+      rw [← Real.sqrt_sq hT0]
+      exact Real.sqrt_le_sqrt (by nlinarith)
+    linarith
+  exact not_NvanLittleO_of_le_NR X δ (1 / 2) (by norm_num) hle hδ_nonneg hvan
+
+end FrequencyGrids

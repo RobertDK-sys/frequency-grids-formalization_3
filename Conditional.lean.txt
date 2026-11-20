@@ -1,0 +1,111 @@
+/-
+Copyright: formalization accompanying "Algebraic Frequency Grids, Harmonic Resonances
+and Primality" (vf4).
+
+# Conditional deductions among the conjectures
+
+Nothing here proves a conjecture of `FrequencyGrids/Conjectures.lean`.  What is proved is how
+the conjectures sit relative to one another:
+
+* `N_off = o(N_R)` and `N_van = o(N_R)` together give `η_R → 1` — the deduction vf4 §6.4.13
+  makes, which `etaR_eq` (`N_phase = 0`) reduces to two terms;
+* conversely `η_R → 1` forces `N_van = o(N_R)`, with no hypothesis on `δ`;
+* hence `EtaTendsToOne` is **false for some truncation schedule**: `X(T) = ⌊√T⌋` refutes it,
+  by `not_NvanLittleO_of_le_NR`.  The conjecture is thus a statement about *admissible*
+  schedules, not about all of them.
+-/
+import Mathlib.Analysis.Asymptotics.Lemmas
+import Mathlib.Analysis.Real.Sqrt
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import FrequencyGrids.Conjectures
+import FrequencyGrids.Necessary
+
+open Filter Topology Asymptotics
+
+namespace FrequencyGrids
+
+/-! ## The two-term identity implies the yield -/
+
+/-- **Conditional deduction**: if `N_off = o(N_R)` and `N_van = o(N_R)` along `T → ∞`, then
+`η_R → 1`.  This is the step vf4 §6.4.13 takes on the strength of `N_phase = 0`. -/
+theorem etaR_tendsto_one_of_littleO (X : ℝ → ℕ) (δ : ℝ → ℝ)
+    (h_off : (fun T => (Noff T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ)))
+    (h_van : (fun T => (Nvan T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ))) :
+    Tendsto (fun T => etaR T (X T) (δ T)) atTop (𝓝 1) := by
+  have h_div : Tendsto
+      (fun T => ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 0) := (h_off.add h_van).tendsto_div_nhds_zero
+  have h_lim : Tendsto
+      (fun T => 1 - ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 1) := by
+    have h' := (tendsto_const_nhds (x := (1 : ℝ))).sub h_div
+    simpa only [sub_zero] using h'
+  have hfun : (fun T => etaR T (X T) (δ T))
+      = fun T => 1 - ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ) :=
+    funext fun T => etaR_eq T (X T) (δ T)
+  rw [hfun]
+  exact h_lim
+
+/-- **Converse, with no condition on `δ`**: if `η_R → 1` then `N_van = o(N_R)`. -/
+theorem nvan_littleO_of_etaR_tendsto_one (X : ℝ → ℕ) (δ : ℝ → ℝ)
+    (h : Tendsto (fun T => etaR T (X T) (δ T)) atTop (𝓝 1)) :
+    (fun T => (Nvan T (X T) (δ T) : ℝ)) =o[atTop] (fun T => (NR T : ℝ)) := by
+  have hNR : ∀ᶠ T : ℝ in atTop, (0 : ℝ) < (NR T : ℝ) := by
+    filter_upwards [eventually_NR_pos] with T hT
+    exact_mod_cast hT
+  have hsum : Tendsto
+      (fun T => ((Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      atTop (𝓝 0) := by
+    have h1 : Tendsto (fun T => 1 - etaR T (X T) (δ T)) atTop (𝓝 (1 - 1)) :=
+      (tendsto_const_nhds (x := (1 : ℝ))).sub h
+    rw [sub_self] at h1
+    refine h1.congr fun T => ?_
+    rw [etaR_eq]
+    ring
+  have hvan_div : Tendsto (fun T => (Nvan T (X T) (δ T) : ℝ) / (NR T : ℝ)) atTop (𝓝 0) := by
+    refine squeeze_zero' (g := fun T => ((Noff T (X T) (δ T) : ℝ)
+      + (Nvan T (X T) (δ T) : ℝ)) / (NR T : ℝ))
+      (hNR.mono fun T hT => div_nonneg (Nat.cast_nonneg _) hT.le) ?_ hsum
+    filter_upwards [hNR] with T hT
+    have h0 : (0 : ℝ) ≤ (Noff T (X T) (δ T) : ℝ) := Nat.cast_nonneg _
+    have hle : (Nvan T (X T) (δ T) : ℝ) ≤
+        (Noff T (X T) (δ T) : ℝ) + (Nvan T (X T) (δ T) : ℝ) := by linarith
+    exact div_le_div_of_nonneg_right hle hT.le
+  exact (isLittleO_iff_tendsto' (f := fun T => (Nvan T (X T) (δ T) : ℝ))
+    (g := fun T => (NR T : ℝ))
+    (hNR.mono fun T hT h0 => absurd h0 hT.ne')).mpr hvan_div
+
+/-- `EtaTendsToOne` implies `NvanLittleO`, schedule by schedule. -/
+theorem nvanLittleO_of_etaTendsToOne (X : ℝ → ℕ) (h : EtaTendsToOne X) : NvanLittleO X :=
+  fun δ hδ => nvan_littleO_of_etaR_tendsto_one X δ (h δ hδ)
+
+/-! ## The conjecture fails for a slowly growing schedule -/
+
+/-- `N_R(T) ≥ 44.12 T - 600`, from `Ntotal_approx` and `NR_eq_Ntotal`. -/
+theorem nr_ge_linear_sub (T : ℝ) (hT : 0 ≤ T) : (44.12 : ℝ) * T - 600 ≤ (NR T : ℝ) := by
+  have h_approx := (abs_le.mp (Ntotal_approx T hT)).1
+  have h_nr_eq : (Ntotal T : ℝ) = (NR T : ℝ) := by
+    rw [NR_eq_Ntotal]
+  linarith
+
+/-- **`EtaTendsToOne` is not a theorem**: the schedule `X(T) = ⌊√T⌋` refutes it, because it
+grows far below `N_R(T) = 44.13 T + O(1)`, while `η_R → 1` would force `N_van = o(N_R)`, which
+`not_NvanLittleO_of_le_NR` excludes. -/
+theorem exists_not_etaTendsToOne : ∃ X : ℝ → ℕ, ¬ EtaTendsToOne X := by
+  refine ⟨fun T => ⌊Real.sqrt T⌋₊, ?_⟩
+  intro h
+  have hvan : NvanLittleO (fun T => ⌊Real.sqrt T⌋₊) := nvanLittleO_of_etaTendsToOne _ h
+  refine not_NvanLittleO_of_le_NR (X := fun T => ⌊Real.sqrt T⌋₊) (c := 1 / 2) (by norm_num) ?_ hvan
+  filter_upwards [eventually_ge_atTop (100 : ℝ)] with T hT
+  have hT0 : (0 : ℝ) ≤ T := by linarith
+  have h1 : (1 : ℝ) ≤ T := by linarith
+  have h_nr : 2 * T ≤ (NR T : ℝ) := by
+    have := nr_ge_linear_sub T hT0
+    linarith
+  have hX : ((⌊Real.sqrt T⌋₊ : ℕ) : ℝ) ≤ Real.sqrt T := Nat.floor_le (Real.sqrt_nonneg T)
+  have hsq : Real.sqrt T ≤ T := by
+    rw [Real.sqrt_le_left hT0]
+    nlinarith [mul_le_mul_of_nonneg_left h1 hT0]
+  linarith
+
+end FrequencyGrids
