@@ -1,0 +1,99 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Scope and result}{2}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Setting: making the equation algebraic}{4}{section.2}\protected@file@percent }
+\newlabel{sec:setup}{{2}{4}{Setting: making the equation algebraic}{section.2}{}}
+\newlabel{eq:cube}{{1}{4}{Setting: making the equation algebraic}{equation.1}{}}
+\newlabel{thm:Eeq}{{2.1}{4}{\code {E\lb eq}}{theorem.2.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Item 1: the root $s_2(t)$}{5}{section.3}\protected@file@percent }
+\newlabel{sec:item1}{{3}{5}{Item 1: the root $s_2(t)$}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Existence in $(-1,0)$}{5}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The narrow interval of the paper, exactly}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{rem:failure}{{3.3}{5}{The reported failure}{theorem.3.3}{}}
+\newlabel{rem:s2value}{{3.4}{6}{A numerical discrepancy in vf4 \S 7.3--7.4}{theorem.3.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces The sign change of the paper's bracket. Left endpoint positive up to $t=589$, negative from $t=590$; right endpoint always negative.}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:signs}{{1}{6}{The sign change of the paper's bracket. Left endpoint positive up to $t=589$, negative from $t=590$; right endpoint always negative}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Item 2: the lattice step and $N_{\mathrm  {phase}}=0$}{6}{section.4}\protected@file@percent }
+\newlabel{sec:item2}{{4}{6}{Item 2: the lattice step and $N_{\mathrm {phase}}=0$}{section.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Item 3: counting the resonant stratum}{6}{section.5}\protected@file@percent }
+\newlabel{sec:item3}{{5}{6}{Item 3: counting the resonant stratum}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Two elementary counting lemmas}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}One lattice}{6}{subsection.5.2}\protected@file@percent }
+\newlabel{thm:kSet}{{5.3}{7}{\code {card\lb kSet\lb bounds}}{theorem.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}The $200$ lattices and the slope}{7}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Distinct count versus mode count}{7}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Item 4: the off-diagonal Gram bound}{8}{section.6}\protected@file@percent }
+\newlabel{sec:item4}{{6}{8}{Item 4: the off-diagonal Gram bound}{section.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Item 5: invariance of $\operatorname  {Re}S_f$ under $b\DOTSB \mapstochar \rightarrow -b$}{8}{section.7}\protected@file@percent }
+\newlabel{sec:item5}{{7}{8}{Item 5: invariance of $\operatorname {Re}S_f$ under $b\mapsto -b$}{section.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Item 6: the $6n\pm 1$ filter}{8}{section.8}\protected@file@percent }
+\newlabel{sec:item6}{{8}{8}{Item 6: the $6n\pm 1$ filter}{section.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}The Gram matrix, $N_{\mathrm  {off}}$ and $N_{\mathrm  {van}}$}{9}{section.9}\protected@file@percent }
+\newlabel{sec:eigen}{{9}{9}{The Gram matrix, $N_{\mathrm {off}}$ and $N_{\mathrm {van}}$}{section.9}{}}
+\newlabel{thm:herm}{{9.2}{9}{\code {gramMatrix\lb isHermitian}}{theorem.9.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}The factorisation, the spectrum and the rank}{10}{subsection.9.1}\protected@file@percent }
+\newlabel{sec:eigen-factor}{{9.1}{10}{The factorisation, the spectrum and the rank}{subsection.9.1}{}}
+\newlabel{thm:EEH}{{9.10}{10}{\code {gramMatrix\lb eq\lb mul\lb conjTranspose}}{theorem.9.10}{}}
+\newlabel{thm:posSemidef}{{9.11}{10}{\code {gramMatrix\lb posSemidef}, \code {eig\lb nonneg}, \code {eigPos\lb eq\lb eig}, \code {rank\lb gramMatrix\lb le}}{theorem.9.11}{}}
+\newlabel{thm:Nvanrank}{{9.13}{10}{\code {card\lb le\lb Nvan\lb add}, \code {Ntotal\lb sub\lb le\lb Nvan}, \code {NR\lb sub\lb le\lb Nvan}}{theorem.9.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}The general frequency family, and the distinct-frequency lattice}{10}{subsection.9.2}\protected@file@percent }
+\newlabel{sec:eigen-general}{{9.2}{10}{The general frequency family, and the distinct-frequency lattice}{subsection.9.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Two instances.}{11}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Collisions are impossible}{11}{subsection.9.3}\protected@file@percent }
+\newlabel{sec:nocollision}{{9.3}{11}{Collisions are impossible}{subsection.9.3}{}}
+\newlabel{thm:nocollision}{{9.18}{11}{\code {abs\lb s2\lb injective}, \code {not\lb hasCollision}, \code {NR\lb eq\lb Ntotal}}{theorem.9.18}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}A numerical remark: the diagnostics are not small}{11}{subsection.9.4}\protected@file@percent }
+\newlabel{sec:eigen-num}{{9.4}{11}{A numerical remark: the diagnostics are not small}{subsection.9.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{The statement $N_{\mathrm  {off}}=\#\mathrm  {modeSet}$ at these parameters is proved (\S  \ref {sec:finite}).}{12}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}The truncation cannot grow slowly}{12}{section.10}\protected@file@percent }
+\newlabel{sec:necessary}{{10}{12}{The truncation cannot grow slowly}{section.10}{}}
+\newlabel{thm:necessary}{{10.1}{12}{\code {NvanLittleO.eventually\lb le\lb Ntotal}}{theorem.10.1}{}}
+\newlabel{thm:refute}{{10.3}{13}{\code {not\lb NvanLittleO\lb of\lb le\lb Ntotal}, \code {not\lb NvanLittleO\lb of\lb le\lb NR}}{theorem.10.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11}The conjectures: stated, not proved}{13}{section.11}\protected@file@percent }
+\newlabel{sec:conj}{{11}{13}{The conjectures: stated, not proved}{section.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12}An explicit estimate for the Gram entries}{14}{section.12}\protected@file@percent }
+\newlabel{sec:estimate}{{12}{14}{An explicit estimate for the Gram entries}{section.12}{}}
+\newlabel{rem:status-s2}{{12.5}{14}{}{theorem.12.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13}Uniqueness of the root, and $t_{\max }$ as a parameter}{14}{section.13}\protected@file@percent }
+\newlabel{sec:unique}{{13}{14}{Uniqueness of the root, and $t_{\max }$ as a parameter}{section.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {13.1}Strict monotonicity and uniqueness}{14}{subsection.13.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {13.2}The truncation $t_{\max }$}{15}{subsection.13.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {14}The band theorem, and the lattice against the zeta zeros}{15}{section.14}\protected@file@percent }
+\newlabel{sec:band}{{14}{15}{The band theorem, and the lattice against the zeta zeros}{section.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {14.1}Why the bands matter}{15}{subsection.14.1}\protected@file@percent }
+\newlabel{thm:bands}{{14.1}{15}{\code {Delta}, \code {abs\lb b\lb sub\lb centre}, \code {abs\lb b\lb band}, \code {abs\lb b\lb sub\lb centre\lb ge}}{theorem.14.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {14.2}What the theorem excludes}{16}{subsection.14.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {14.3}Three further obstructions, and what they do not say}{16}{subsection.14.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {14.4}The finite verification of \S  6.4.8}{17}{subsection.14.4}\protected@file@percent }
+\newlabel{sec:finite}{{14.4}{17}{The finite verification of \S 6.4.8}{subsection.14.4}{}}
+\newlabel{thm:finite}{{14.2}{17}{\code {NoffOf\lb 10\lb 100}, \code {NoffOf\lb 10\lb 500}, and \code {exists\lb close\lb neighbour\lb modeSetOf\lb 10}}{theorem.14.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {15}Verification notes}{17}{section.15}\protected@file@percent }
+\newlabel{sec:verif}{{15}{17}{Verification notes}{section.15}{}}
+\@writefile{toc}{\contentsline {paragraph}{Axioms.}{17}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Build.}{17}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Design choices worth knowing.}{18}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What a reader should not conclude.}{18}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {16}Note de l'auteur sur la famille $b$, les combinaisons pondérées et l'obstruction de comptage}{18}{section.16}\protected@file@percent }
+\newlabel{sec:author-note}{{16}{18}{Note de l'auteur sur la famille $b$, les combinaisons pondérées et l'obstruction de comptage}{section.16}{}}
+\gdef \LT@i {\LT@entry 
+    {1}{91.35826pt}\LT@entry 
+    {1}{171.3356pt}\LT@entry 
+    {1}{190.9429pt}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {16.1}Pourquoi $b_{\mathrm  {mathematical}}$ est le seul fondement apte à engendrer $b_{\mathrm  {quantique}}$}{19}{subsection.16.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {16.2}Rôle de l'obstruction de Riemann--von Mangoldt}{19}{subsection.16.2}\protected@file@percent }
+\gdef \LT@ii {\LT@entry 
+    {1}{179.56198pt}\LT@entry 
+    {1}{262.0748pt}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {16.3}Garde-fous méthodologiques (auteur)}{20}{subsection.16.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {16.4}Le bloc destiné aux sources Lean 4}{20}{subsection.16.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {16.5}Statut, affirmation par affirmation}{20}{subsection.16.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {17}Declaration-by-declaration table}{21}{section.17}\protected@file@percent }
+\newlabel{sec:table}{{17}{21}{Declaration-by-declaration table}{section.17}{}}
+\gdef \LT@iii {\LT@entry 
+    {1}{110.69783pt}\LT@entry 
+    {1}{51.2483pt}\LT@entry 
+    {1}{246.43422pt}\LT@entry 
+    {1}{45.25641pt}}
+\gdef \@abspage@last{27}
